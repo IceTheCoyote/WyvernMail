@@ -5,8 +5,8 @@ DragonMail is a email server made entirely from scratch (no not Scratch 3) where
 **_How is this possible?_**
 
 - When a user requests a mail to be sent over the server looks at "bob@example.com" using @ to split the values into an array.
-- Then the server stores the request into a requestBox array for processing.
-- After that the server asks the other server using a ASK_PORT which is a UDP protocol listening to port 100 a question {"id":"ASKINFO"} which the other server will either respond with the answer telling the server it's name + if it's ssl or not otherwise the server destroys the request if there's no response within 15 seconds.
+- Then the server stores the request into a `requestOutbox` array for processing.
+- After that the server asks the other server using a `ASK_PORT` which is a UDP protocol listening to port 100 a question {"id":"ASKINFO"} which the other server will either respond with the answer telling the server it's name + if it's ssl or not otherwise the server destroys the request if there's no response within 15 seconds.
 - Once everything's sent the request gets destroyed for the next request.
 
 # How do you set it up?
