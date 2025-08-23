@@ -9,6 +9,10 @@ DragonMail is a email server made entirely from scratch (no not Scratch 3) where
 - After that the server asks the other server using a `ASK_PORT` which is a UDP protocol listening to port 100 a question {"id":"ASKINFO"} which the other server will either respond with the answer telling the server it's name + if it's ssl or not otherwise the server destroys the request if there's no response within 15 seconds.
 - Once everything's sent the request gets destroyed for the next request.
 
+# Requirements
+
+- Must have TCP ports 3425 (UNSECURED) or 3426 (SSL SECURED) port forwarded. That includes port forwarding the ask port which uses port 100 on UDP.
+
 # How do you set it up?
 
 1. Install the dependencies by using `npm install` or if node is missing download NodeJS.
