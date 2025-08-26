@@ -4,6 +4,7 @@ const dgram = require("dgram");
 const uuid = require("uuid");
 const https = require("https");
 const sha256 = require("sha256");
+const dns = require('dns').promises;
 
 const PLAIN_PORT = 3425;
 const SSL_PORT = 3426;
@@ -86,6 +87,23 @@ function formatAddress(ip, type = 'ipv4') {
     }
 }
 
+async function checkDomainResolution(domain) {
+    try {
+        const addresses = await dns.resolve(domain, "A");
+        if (addresses.length > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (err) {
+        if (err.code === 'ENOTFOUND' || err.code === 'ENODATA') {
+            return false;
+        } else {
+            return false;
+        }
+    }
+}
+
 let clients = [];
 let requestOutbox = [];
 let currentlyProcessingRequest = false;
@@ -111,7 +129,7 @@ server.on("connection", (socket, req) => {
     socket.authed = false;
     socket.userid = null;
     socket.num = clients.length;
-    var ipc = formatAddress(req.socket.address()["address"]);
+    var ipc = formatAddress(req.socket.remoteAddress);
     clients.push(socket);
 
     send(socket, {
@@ -156,6 +174,8 @@ server.on("connection", (socket, req) => {
                     fs.mkdirSync("data/"+user+"/trash");
                     users[user] = {
                         password: pass,
+                        banned: false,
+                        profile_imageurl: "",
                         folders: {
                             inbox: {
                                 alias: "Inbox",
@@ -193,7 +213,8 @@ server.on("connection", (socket, req) => {
                             instagram: "",
                             tiktok: ""
                         },
-                        rep_pts: [] // Stored like so {"user": "alex", "rep": 1} or {"user":"john", "rep": -1}
+                        rep_pts: [], // Stored like so {"user": "alex", "rep": 1} or {"user":"john", "rep": -1}
+                        admin: false
                     }
 
                     send(socket, {
@@ -209,14 +230,22 @@ server.on("connection", (socket, req) => {
 
                 if(user in users) {
                     if(users[user]["password"] == pass) {
-                        console.log(user+" has been successfully logged in by "+ipc);
-                        socket.authed = true;
-                        socket.userid = user;
+                        if(users[user].banned == true) {
+                            send(socket, {
+                                id: "BANNED"
+                            });
+                        } else {
+                            console.log(user+" has been successfully logged in by "+ipc);
+                            socket.authed = true;
+                            socket.userid = user;
 
-                        send(socket, {
-                            id: "LOG_OK",
-                            folders: users[user]["folders"]
-                        });
+                            send(socket, {
+                                id: "LOG_OK",
+                                folders: users[user]["folders"],
+                                username: user,
+                                profile_image: users[user]["profile_imageurl"] || ""
+                            });
+                        }
                     } else {
                         console.log(user+" failed to authenticate by "+ipc);
                         send(socket, {
@@ -249,23 +278,28 @@ server.on("connection", (socket, req) => {
                         drafted: false
                     }
                     var s = p["to"].split("@");
+                    var ss = p["from"].split("@");
                     var u = users[s[0]];
                     var uuid_file = uuid.v4();
-                    if(s[0] in users) {
-                        console.log(s[0]+" successfully received mail from "+p["from"]+" "+uuid_file+".mdata in their inbox.");
-                        fs.writeFileSync("data/"+s[0]+"/inbox/"+uuid_file+".mdata", JSON.stringify(construction, null, '\t'));
-                        u["folders"]["inbox"]["files"].push(uuid_file);
 
-                        send(socket, {
-                            id: "SENT_SUCCESS"
-                        });
-                    } else {
-                        send(socket, {
-                            id: "SENT_FAILED"
-                        });
-                    }
+                    // Let's check to see if the domain is valid otherwise we stop and move on.
+                    checkDomainResolution(ss[1]).then((g) => {
+                        if(s[0] in users && g == true) {
+                            console.log(s[0]+" successfully received mail from "+p["from"]+" "+uuid_file+".mdata in their inbox.");
+                            fs.writeFileSync("data/"+s[0]+"/inbox/"+uuid_file+".mdata", JSON.stringify(construction, null, '\t'));
+                            u["folders"]["inbox"]["files"].push(uuid_file);
 
-                    socket.terminate();
+                            send(socket, {
+                                id: "SENT_SUCCESS"
+                            });
+                        } else {
+                            send(socket, {
+                                id: "SENT_FAILED"
+                            });
+                        }
+
+                        socket.terminate();
+                    });
                 } else {
                     console.log("They were blocked so there not to be trusted...");
                 }
@@ -397,7 +431,7 @@ server.on("connection", (socket, req) => {
 
                 try {
                     if(socket.authed != false) {
-                        // if(folder_id != "trash") {
+                        if(folder_id != new_folder) {
                             for(var i=0; i<users[socket.userid]["folders"][folder_id]["files"].length; i++) {
                                 if(users[socket.userid]["folders"][folder_id]["files"][i] == mail_id) {
                                     users[socket.userid]["folders"][new_folder]["files"].push(users[socket.userid]["folders"][folder_id]["files"][i]);
@@ -409,7 +443,11 @@ server.on("connection", (socket, req) => {
                                     });
                                 }
                             }
-                        //}
+                        } else {
+                            send(socket, {
+                                id: "MOVE_ERR"
+                            });
+                        }
                     }
                 }catch(e){}
                 break;
@@ -564,13 +602,62 @@ server.on("connection", (socket, req) => {
                 var pw = p["password"];
                 var cmd = p["cmd"];
 
-                switch(cmd) {
-                    case "HELP":
-                        console.log(`{"id":"CMD","username":"username here","password":"password here","cmd":"SAVE_SERVER"} - Saves the server's data.`);
-                        console.log(`{"id":"CMD","username":"username here","password":"password here","cmd":"SERVER_STATUS"} - Views the server's version, users, currently processing outboxes and it's server name.`);
-                        console.log(`{"id":"CMD","username":"username here","password":"password here","cmd":"USER_LIST"} - View's the list of clients that have registered on this server.`);
-                        console.log(`{"id":"CMD","username":"username here","password":"password here","cmd":"USER_RESET","userid":"bob"} - Completely resets the user's account except for password.`);
-                        break;
+                if((us == conf.admin.username && pw == conf.admin.password) || users[socket.userid]["admin"] == true) {
+                    switch(cmd) {
+                        case "HELP":
+                            var cheatsheet = [
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"SAVE_SERVER"} - Saves the server's data.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"SERVER_STATUS"} - Views the server's version, users, currently processing outboxes and it's server name.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"SERVER_RESTART"} - Saves and restarts the server.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"USER_LIST"} - View's the list of clients that have registered on this server.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"USER_RESET","userid":"bob"} - Completely resets the user's account except for password.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"USER_INFO","userid":"bob"} - Outputs the user's information to the staff members.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"USER_BAN","userid":"bob","reason":"broke my lawn.","days":30} - Bans the account from logging in and kicks the sockets logged in to the account.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"USER_UNBAN","userid":"bob"} - Unbans the account so that the user can log back in.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"CREATE_USER","userid":"bob","passwd":"pass123"} - Create a new user (if it doesn't exists) with a password that is hashed with sha256.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"REMOVE_USER","userid":"bob"} - Completely removes the user's account making it available for anyone to register.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"ANNOUCEMENT","subject":"IMPORTANT ANNOUNCEMENTS","message":"kool your system.} - Makes an announcement by sending an email to all users on the server and only on this server.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"BLOCK_DOMAIN","domain_name":"naggers.net"} - Blocks the domain name so that users on this server do not receive emails from this blocked domain name.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"UNBLOCK_DOMAIN","domain_name":"naggers.net"} - Unblocks the domain name so that users on this server will now receive new upcoming emails from this domain name.`,
+                                `{"id":"CMD","username":"username here","password":"password here","cmd":"EDIT_MESSAGE","new_message":"HEDGEHOG STEW!"} - Replaces the current welcome message with the new message.`,
+                            ];
+
+                            for(var i=0; i<cheatsheet.length; i++) {
+                                send(socket, [cheatsheet[i]]);
+                            }
+                            break;
+                        case "SAVE_SERVER":
+                            saveJson();
+
+                            send(socket, ["The server's configuration and data was saved."]);
+                            break;
+                        case "SERVER_STATUS":
+                            var banned = 0;
+                            for(u in users) {
+                                if(users[u]["banned"] == true) {banned++;}
+                            }
+                            send(socket, [
+                                "Total Number of accounts registered is about "+Object.keys(users).length+" and about "+banned+" are banned.",
+                                "Total Number of requests are currently processing "+requestOutbox.length+" of emails.",
+                                "Total Number of blocked domains are at a size of "+conf.blocked_servers.length+" in the array.",
+                                "The current domain root is "+conf.domain_root
+                            ]);
+                            break;
+                        case "SERVER_RESTART":
+                            saveJson();
+                            setTimeout(function() {process.exit(1);},1000);
+                            send(socket, [
+                                "The server will restart/shutdown in a second."
+                            ]);
+                            break;
+                        case "USER_LIST":
+                            for(i in users) {
+                                send(socket, [
+                                    i + " is currently " + users[i].banned ? 'active' : 'banned from this server.'
+                                ]);
+                            };
+                            break;
+                    }
                 }
                 break;
         }
