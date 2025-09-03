@@ -20,4 +20,4 @@ DragonMail is a email server made entirely from scratch (no not Scratch 3) where
 2. Start the server by using `node server.js`.
 3. Kill the program by either Ctrl+C or through the task manager.
 4. Edit `config.json` and modify the `domain_root` to match with your domain. If you want SSL enable `use_ssl`, specify the `cert` and `key_cert` you must specify their paths.
-5. After that save and re-run the program again. The server should listen to a port in the config.
+5. After that save and re-run the program again. The server should listen to a port to either 3425 if ssl is not enabled or 3426 if enabled and 100 UDP port for the ask server.
