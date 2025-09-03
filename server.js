@@ -226,6 +226,7 @@ server.on("connection", (socket, req) => {
                         rep_pts: [], // Stored like so {"user": "alex", "rep": 1} or {"user":"john", "rep": -1}
                         admin: false
                     }
+                    saveJson();
 
                     send(socket, {
                         id: "REG_OK",
@@ -298,6 +299,7 @@ server.on("connection", (socket, req) => {
                             console.log(s[0]+" successfully received mail from "+p["from"]+" "+uuid_file+".mdata in their inbox.");
                             fs.writeFileSync("data/"+s[0]+"/inbox/"+uuid_file+".mdata", JSON.stringify(construction, null, '\t'));
                             u["folders"]["inbox"]["files"].push(uuid_file);
+                            saveJson();
 
                             send(socket, {
                                 id: "SENT_SUCCESS"
@@ -316,7 +318,7 @@ server.on("connection", (socket, req) => {
                 break;
             case "SEND":
                 console.log("We're sending a message to the server so be prepare for that!");
-                if(socket.authed != false) {
+                if(socket.authed != false && p["to"].split("@")[0] != socket.userid) {
                     var to = p["to"].split("@");
                     requestOutbox.push({
                         to: purifyString(to[0].toLowerCase())+"@"+to[1].toLowerCase() || "support@dragonrelay.net",
@@ -404,6 +406,7 @@ server.on("connection", (socket, req) => {
                             }
                             fs.unlinkSync("data/"+socket.userid+"/"+folder_id);
                             delete users[socket.userid]["folders"][folder_id];
+                            saveJson();
 
                             send(socket, {
                                 id: "DELETED_OK"
@@ -425,6 +428,7 @@ server.on("connection", (socket, req) => {
                                     fs.copyFileSync("data/"+socket.userid+"/"+folder_id+"/"+users[socket.userid]["folders"][folder_id]["files"][i]+".mdata", "data/"+socket.userid+"/trash/"+users[socket.userid]["folders"][folder_id]["files"][i]+".mdata");
                                     fs.unlinkSync("data/"+socket.userid+"/"+folder_id+"/"+users[socket.userid]["folders"][folder_id]["files"][i]+".mdata");
                                     users[socket.userid]["folders"][folder_id]["files"].splice(i, 1);
+                                    saveJson();
                                     send(socket, {
                                         id: "MAIL_DELETED"
                                     });
@@ -448,6 +452,7 @@ server.on("connection", (socket, req) => {
                                     fs.copyFileSync("data/"+socket.userid+"/"+folder_id+"/"+users[socket.userid]["folders"][folder_id]["files"][i]+".mdata", "data/"+socket.userid+"/"+new_folder+"/"+users[socket.userid]["folders"][folder_id]["files"][i]+".mdata");
                                     fs.unlinkSync("data/"+socket.userid+"/"+folder_id+"/"+users[socket.userid]["folders"][folder_id]["files"][i]+".mdata");
                                     users[socket.userid]["folders"][folder_id]["files"].splice(i, 1);
+                                    saveJson();
                                     send(socket, {
                                         id: "MAIL_MOVED"
                                     });
@@ -477,6 +482,7 @@ server.on("connection", (socket, req) => {
                                 files: []
                             };
                             fs.mkdirSync("data/"+socket.userid+"/"+folder_id);
+                            saveJson();
 
                             send(socket, {
                                 id: "NEW_FOLDER_CREATED",
@@ -495,6 +501,7 @@ server.on("connection", (socket, req) => {
                     if(socket.authed != false) {
                         if(folder_id in users[socket.userid]["folders"]) {
                             users[socket.userid]["folders"][folder_id]["alias"] = new_name;
+                            saveJson();
                             send(socket, {
                                 id: "RENAMED_FOLDER",
                                 new_name: new_name
@@ -510,6 +517,7 @@ server.on("connection", (socket, req) => {
                     }
 
                     users[socket.userid]["folders"]["trash"]["files"] = [];
+                    saveJson();
 
                     send(socket, {
                         id: "TRASH_EMPTIED"
@@ -532,6 +540,7 @@ server.on("connection", (socket, req) => {
                     var uuid_file = uuid.v4();
                     users[socket.userid]["folders"]["draft"]["files"].push(uuid_file);
                     fs.writeFileSync("data/"+socket.userid+"/draft/"+uuid_file+".mdata", JSON.stringify(construction, null, '\t'));
+                    saveJson();
 
                     send(socket, {
                         id: "DRAFT_SAVED"
@@ -599,6 +608,7 @@ server.on("connection", (socket, req) => {
                             });
                             fs.unlinkSync("data/"+socket.userid+"/draft/"+users[socket.userid]["folders"]["draft"]["files"][i]+".mdata");
                             users[socket.userid]["folders"]["draft"]["files"].splice(i, 1);
+                            saveJson();
 
                             send(socket, {
                                 id: "DRAFT_SENT"
@@ -694,6 +704,7 @@ server.on("connection", (socket, req) => {
                             users[p["userid"]]["info"] = {first_name: "Bob",last_name: "Smith",age: 37,website: "https://bobsmith.com/",about_yourself: "Hello I am bob and I like cheeseburgers.",youtube_channel: "",x_profile: "",facebook: "",instagram: "",tiktok: ""};
                             users[p["userid"]]["rep_pts"] = [];
                             users[p["userid"]]["admin"] = false;
+                            saveJson();
                             send(socket, ["User "+p["userid"]+" has been reset back to default except for their password."]);
                             break;
                         case "USER_INFO":
@@ -810,6 +821,7 @@ server.on("connection", (socket, req) => {
                                     rep_pts: [], // Stored like so {"user": "alex", "rep": 1} or {"user":"john", "rep": -1}
                                     admin: false
                                 }
+                                saveJson();
                                 
                                 send(socket, [
                                     `You have successfully created ${p["userid"]} account.`
@@ -889,6 +901,7 @@ server.on("connection", (socket, req) => {
                             break;
                         case "EDIT_MESSAGE":
                             conf.settings.welcomeMessage = p["new_message"];
+                            saveJson();
 
                             send(socket, [
                                 `New welcome message was set. Users will now notice this new message when they log in.`
@@ -1061,6 +1074,7 @@ socketServer.on("message", (msg, rinfo) => {
                     });
                 }
             }
+            saveJson();
             break;
     }
 });
