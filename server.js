@@ -18,11 +18,11 @@ let conf = {
     blocked_servers: [],
     settings: {
         defaultMailStorage: 1024 * 1024 * 1024 * 1,
-        welcomeMessage: "Welcome back you Stellar!",
-        serverName: "StellarMail",
+        welcomeMessage: "Welcome back young Dragon!",
+        serverName: "WyvernMail",
         use_ssl: false,
         enforce_ssl_connection: false,
-        domain_root: "dragonrelay.net", // If you want others to send you a reply back then this must be included otherwise just leave it blank I guess... (leave blank for no way to respond)
+        domain_root: "example.com", // If you want others to send you a reply back then this must be included otherwise just leave it blank I guess... (leave blank for no way to respond)
         cert: "", // Sets a public certificate that the server must use for use_ssl if enabled.
         key_cert: "" // Sets a private key that the server must use for use_ssl if enabled.
     }
@@ -1095,4 +1095,5 @@ process.on('SIGTERM', () => {
     console.log('Ctrl+C detected! Saving file first...');
     saveJson();
     process.exit();
+
 });
