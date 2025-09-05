@@ -1,6 +1,6 @@
-# DragonMail
+# WyvernMail
 
-DragonMail is a email server made entirely from scratch (no not Scratch 3) where you can host a email without worrying about setting up a DNS record for MX just use the A record.
+WyvernMail is a email server made entirely from scratch (no not Scratch 3) where you can host a email without worrying about setting up a DNS record for MX just use the A record.
 
 **_How is this possible?_**
 
