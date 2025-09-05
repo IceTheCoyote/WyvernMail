@@ -296,7 +296,7 @@ server.on("connection", (socket, req) => {
                     // Let's check to see if the domain is valid otherwise we stop and move on.
                     checkDomainResolution(ss[1]).then((g) => {
                         if(s[0] in users && g == true) {
-                            console.log(s[0]+" successfully received mail from "+p["from"]+" "+uuid_file+".mdata in their inbox.");
+                            console.log(s[0]+" successfully received mail from "+p["from"]+" and we are now adding "+uuid_file+".mdata in the user's inbox.");
                             fs.writeFileSync("data/"+s[0]+"/inbox/"+uuid_file+".mdata", JSON.stringify(construction, null, '\t'));
                             u["folders"]["inbox"]["files"].push(uuid_file);
                             saveJson();
@@ -1097,3 +1097,4 @@ process.on('SIGTERM', () => {
     process.exit();
 
 });
+
