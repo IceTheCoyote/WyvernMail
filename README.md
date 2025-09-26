@@ -1,6 +1,6 @@
 # WyvernMail
 
-WyvernMail is a email server made entirely from scratch (no not Scratch 3) where you can host a email without worrying about setting up a DNS record for MX just use the A record.
+WyvernMail is a email server made entirely from scratch (no not Scratch 3) where you can host a email without worrying about setting up a DNS record for MX just use the A and TXT record.
 
 **_How is this possible?_**
 
@@ -13,6 +13,7 @@ WyvernMail is a email server made entirely from scratch (no not Scratch 3) where
 
 - Must have TCP ports 3425 (UNSECURED) or 3426 (SSL SECURED) port forwarded. That includes port forwarding the ask port which uses port 100 on UDP.
 - Must have NodeJS installed. You can get nodejs by [Installing it through their website.](https://nodejs.org/en)
+- A domain name with two records (A record pointing to your VPS's server and TXT record containing "WyvernMail 1.0").
 
 # How do you set it up?
 
